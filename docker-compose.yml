@@ -1,0 +1,28 @@
+
+
+services:
+  ngrok:
+    image: ngrok/ngrok
+    env_file:                            # Подключение .env файла с NGROK_AUTHTOKEN
+      - .env
+    command: http bot:3000               # Проброс порта, на котором бот слушает вебхуки
+    ports:
+      - "4040:4040"                      # Проброс порта для веб-интерфейса ngrok
+    container_name: ngrok_tunnel
+    networks:
+      - botnet
+
+  bot:
+    build: ./bot                         # Папка с ботом и его Dockerfile
+    depends_on:
+      - ngrok                            # Указываем, что бот должен запуститься после ngrok
+    env_file:                            # Используем файл .env для TELEGRAM_BOT_TOKEN
+      - .env
+    container_name: telegram_bot
+    networks:
+      - botnet
+    restart: always                      # Автоматический перезапуск бота, если ошибка
+
+networks:
+  botnet:
+    driver: bridge

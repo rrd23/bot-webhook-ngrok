@@ -1,0 +1,43 @@
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Файлы среды разработки
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Файлы Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Виртуальные окружения
+venv/
+env/
+.env
+
+# Логи
+*.log
+
+# Файлы Docker
+Dockerfile
+.dockerignore
+
+# Файлы git
+.git
+.gitignore
+
+# Файлы документации
+README.md
+LICENSE
+
+# Тестовые файлы
+tests/
+test_*.py
+
+# Временные файлы
+*.tmp
+*.bak
+
