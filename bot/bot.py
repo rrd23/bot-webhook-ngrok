@@ -1,7 +1,7 @@
 import os
 import logging
-import requests
-import time
+import aiohttp
+import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler
@@ -22,31 +22,33 @@ dp = Dispatcher()
 async def start_command(message: types.Message):
     await message.answer("Привет! Это бот на вебхуках.")
 
-# Получение публичного URL ngrok с повторными попытками
-def get_ngrok_url():
+# Асинхронная версия получения URL ngrok
+async def get_ngrok_url():
     url = 'http://ngrok_tunnel:4040/api/tunnels'
-    max_attempts = 10  # Максимум 10 попыток
+    max_attempts = 10
     attempt = 0
-    while attempt < max_attempts:
-        try:
-            response = requests.get(url)  # Запрашиваем API ngrok
-            data = response.json()
-            if len(data['tunnels']) > 0:  # Проверяем, есть ли хотя бы один туннель
-                public_url = data['tunnels'][0]['public_url']  # Извлекаем публичный URL
-                return public_url
-            else:
-                logging.info(f"No tunnels found. Attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
-        except requests.exceptions.ConnectionError:
-            logging.info(f"Connection error on attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
-        
-        attempt += 1
-        time.sleep(3)  # Ожидание перед новой попыткой
+    
+    async with aiohttp.ClientSession() as session:
+        while attempt < max_attempts:
+            try:
+                async with session.get(url) as response:
+                    data = await response.json()
+                    if len(data['tunnels']) > 0:
+                        public_url = data['tunnels'][0]['public_url']
+                        return public_url
+                    else:
+                        logging.info(f"No tunnels found. Attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
+            except aiohttp.ClientError:
+                logging.info(f"Connection error on attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
+            
+            attempt += 1
+            await asyncio.sleep(3)
     
     raise ConnectionError("Failed to connect to ngrok or no tunnels available after multiple attempts")
 
 # Настраиваем вебхуки и HTTP сервер
 async def on_startup(app):
-    webhook_url = f"{get_ngrok_url()}/webhook"  # Получаем публичный URL ngrok
+    webhook_url = f"{await get_ngrok_url()}/webhook"
     logging.info(f"Setting webhook: {webhook_url}")
     await bot.set_webhook(webhook_url)
 
@@ -54,7 +56,7 @@ async def on_shutdown(app):
     await bot.delete_webhook()
 
 # Основная функция для запуска сервера
-def main():
+async def main():
     # Настраиваем Aiohttp веб-приложение
     app = web.Application()
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")  # Путь для вебхука
@@ -65,8 +67,8 @@ def main():
     # Удаляем вебхук при остановке
     app.on_shutdown.append(on_shutdown)
     
-    # Запускаем HTTP сервер (без asyncio.run())
-    web.run_app(app, host="0.0.0.0", port=3000)
+    return app
 
 if __name__ == '__main__':
-    main()
+    app = asyncio.run(main())
+    web.run_app(app, host="0.0.0.0", port=3000)
