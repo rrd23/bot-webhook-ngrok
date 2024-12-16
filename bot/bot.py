@@ -9,6 +9,8 @@ from aiohttp import web
 
 # Получаем токен бота из переменных окружения
 API_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+if not API_TOKEN:
+    raise ValueError("Необходимо установить переменную окружения TELEGRAM_BOT_TOKEN")
 
 # Включаем логирование
 logging.basicConfig(level=logging.INFO)
@@ -31,15 +33,15 @@ async def get_ngrok_url():
     async with aiohttp.ClientSession() as session:
         while attempt < max_attempts:
             try:
-                async with session.get(url) as response:
+                async with session.get(url, timeout=5) as response:
                     data = await response.json()
-                    if len(data['tunnels']) > 0:
-                        public_url = data['tunnels'][0]['public_url']
+                    tunnels = data.get('tunnels', [])
+                    if tunnels:
+                        public_url = tunnels[0]['public_url']
                         return public_url
-                    else:
-                        logging.info(f"No tunnels found. Attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
-            except aiohttp.ClientError:
-                logging.info(f"Connection error on attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
+                    logging.info(f"No tunnels found. Attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
+            except (aiohttp.ClientError, KeyError, ValueError) as e:
+                logging.info(f"Connection error: {e}. Attempt {attempt+1}/{max_attempts}. Retrying in 3 seconds...")
             
             attempt += 1
             await asyncio.sleep(3)
@@ -48,12 +50,17 @@ async def get_ngrok_url():
 
 # Настраиваем вебхуки и HTTP сервер
 async def on_startup(app):
-    webhook_url = f"{await get_ngrok_url()}/webhook"
-    logging.info(f"Setting webhook: {webhook_url}")
-    await bot.set_webhook(webhook_url)
+    try:
+        webhook_url = f"{await get_ngrok_url()}/webhook"
+        logging.info(f"Setting webhook: {webhook_url}")
+        await bot.set_webhook(webhook_url)
+    except Exception as e:
+        logging.error(f"Ошибка при установке вебхука: {e}")
+        raise
 
 async def on_shutdown(app):
     await bot.delete_webhook()
+    logging.info("Webhook удален.")
 
 # Основная функция для запуска сервера
 async def main():
@@ -67,6 +74,10 @@ async def main():
     # Удаляем вебхук при остановке
     app.on_shutdown.append(on_shutdown)
     
+    # Регистрируем обработчики
+    dp.include_router(dp.router)
+
+    logging.info("Сервер запущен на http://0.0.0.0:3000")
     return app
 
 if __name__ == '__main__':
