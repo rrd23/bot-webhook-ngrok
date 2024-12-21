@@ -186,6 +186,3 @@ config.local.json
 logs/
 *.log.*
 
-# VS Code settings
-.vscode/
-*.code-workspace
