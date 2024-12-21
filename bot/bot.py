@@ -1,5 +1,5 @@
 import os
-import logging
+import logging 
 import aiohttp
 import asyncio
 from aiogram import Bot, Dispatcher, types
@@ -10,7 +10,7 @@ from aiohttp import web
 # Получаем токен бота из переменных окружения
 API_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 if not API_TOKEN:
-    raise ValueError("Необходимо установить переменную окружения TELEGRAM_BOT_TOKEN")
+    raise ValueError("Необходимо установить переменную окружения TELEGRAM_BOT_TOKEN") 
 
 # Включаем логирование
 logging.basicConfig(level=logging.INFO)
@@ -80,6 +80,6 @@ async def main():
     logging.info("Сервер запущен на http://0.0.0.0:3000")
     return app
 
-if __name__ == '__main__':
+if __name__ == '__main__':   
     app = asyncio.run(main())
     web.run_app(app, host="0.0.0.0", port=3000)

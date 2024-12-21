@@ -40,4 +40,7 @@ test_*.py
 # Временные файлы
 *.tmp
 *.bak
+*.old
+*.orig
+*.backup
 
